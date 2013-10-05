@@ -128,13 +128,10 @@ query_cache_size = 0
 skip-innodb
 END
 
-    # Generating a new password for the root user.
-    passwd=`get_password root@mysql`
-    mysqladmin password "$passwd"
     cat > ~/.my.cnf <<END
 [client]
 user = root
-password = $passwd
+password = raspberry
 END
     chmod 600 ~/.my.cnf
 }
