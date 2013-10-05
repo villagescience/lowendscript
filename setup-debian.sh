@@ -114,20 +114,19 @@ function install_exim4 {
 
 function install_mysql {
     # Install the MySQL packages
-    check_install mysqld mysql-server
-    check_install mysql mysql-client
+
+    sudo debconf-set-selections <<< 'mysql-server-5.5 mysql-server/root_password password raspberry'
+    sudo debconf-set-selections <<< 'mysql-server-5.5 mysql-server/root_password_again password raspberry'
+    check_install mysql-server-5.5
 
     # Install a low-end copy of the my.cnf to disable InnoDB, and then delete
     # all the related files.
-    invoke-rc.d mysql stop
-    rm -f /var/lib/mysql/ib*
     cat > /etc/mysql/conf.d/lowendbox.cnf <<END
 [mysqld]
 key_buffer = 8M
 query_cache_size = 0
 skip-innodb
 END
-    invoke-rc.d mysql start
 
     # Generating a new password for the root user.
     passwd=`get_password root@mysql`
@@ -142,7 +141,7 @@ END
 
 function install_nginx {
     check_install nginx nginx
-    
+
     # Need to increase the bucket size for Debian 5.
     cat > /etc/nginx/conf.d/lowendbox.conf <<END
 server_names_hash_bucket_size 64;
