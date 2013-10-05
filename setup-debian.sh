@@ -117,11 +117,12 @@ function install_mysql {
 
     sudo debconf-set-selections <<< 'mysql-server-5.5 mysql-server/root_password password raspberry'
     sudo debconf-set-selections <<< 'mysql-server-5.5 mysql-server/root_password_again password raspberry'
-    check_install mysql-server-5.5
+    check_install mysqld mysql-server-5.5
 
     # Install a low-end copy of the my.cnf to disable InnoDB, and then delete
     # all the related files.
 
+    mkdir -p /etc/mysql/conf.d/
     echo -e "[mysqld] \
       key_buffer = 8M \
       query_cache_size = 0 \
@@ -367,35 +368,13 @@ function update_upgrade {
 export PATH=/bin:/usr/bin:/sbin:/usr/sbin
 
 check_sanity
-case "$1" in
-exim4)
-    install_exim4
-    ;;
-mysql)
-    install_mysql
-    ;;
-nginx)
-    install_nginx
-    ;;
-php)
-    install_php
-    ;;
-system)
-    remove_unneeded
-    update_upgrade
-    install_dash
-    install_syslogd
-    install_dropbear
-    ;;
-wordpress)
-    install_wordpress $2
-    ;;
-*)
-    echo 'Usage:' `basename $0` '[option]'
-    echo 'Available option:'
-    for option in system exim4 mysql nginx php wordpress
-    do
-        echo '  -' $option
-    done
-    ;;
-esac
+install_exim4
+install_mysql
+install_nginx
+install_php
+remove_unneeded
+update_upgrade
+install_dash
+install_syslogd
+install_dropbear
+install_wordpress vspi.local
