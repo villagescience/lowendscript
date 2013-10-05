@@ -121,18 +121,13 @@ function install_mysql {
 
     # Install a low-end copy of the my.cnf to disable InnoDB, and then delete
     # all the related files.
-    cat > /etc/mysql/conf.d/lowendbox.cnf <<END
-[mysqld]
-key_buffer = 8M
-query_cache_size = 0
-skip-innodb
-END
 
-    cat > ~/.my.cnf <<END
-[client]
-user = root
-password = raspberry
-END
+    echo -e "[mysqld] \
+      key_buffer = 8M \
+      query_cache_size = 0 \
+      skip-innodb" >> /etc/mysql/conf.d/lowendbox.cnf
+
+    echo -e "[client] \n user = root \n password = raspberry" >> ~/.my.cnf
     chmod 600 ~/.my.cnf
 }
 
