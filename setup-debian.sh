@@ -75,6 +75,11 @@ function install_dash {
     ln -s dash /bin/sh
 }
 
+
+function install_redis {
+    check_install redis-server redis
+}
+
 function install_dropbear {
     check_install dropbear dropbear
     check_install /usr/sbin/xinetd xinetd
@@ -295,9 +300,9 @@ function install_wordpress {
     # MySQL userid cannot be more than 15 characters long
     userid="${userid:0:15}"
     passwd=`get_password "$userid@mysql"`
-    cp "/var/www/$1/wp-config-sample.php" "/var/www/$1/wp-config.php"
+    cp "/var/www/$1/wordpress/wp-config-sample.php" "/var/www/$1/wordpress/wp-config.php"
     sed -i "s/database_name_here/$dbname/; s/username_here/$userid/; s/password_here/$passwd/" \
-        "/var/www/$1/wp-config.php"
+        "/var/www/$1/wordpress/wp-config.php"
     mysqladmin create "$dbname"
     echo "GRANT ALL PRIVILEGES ON \`$dbname\`.* TO \`$userid\`@localhost IDENTIFIED BY '$passwd';" | \
         mysql
@@ -305,18 +310,49 @@ function install_wordpress {
     # Setting up Nginx mapping
     cat > "/etc/nginx/sites-enabled/$1.conf" <<END
 server {
-    server_name $1;
-    root /var/www/$1;
+    listen 80 default_server;
+    server_name _;
+    root /var/www/$1/wordpress;
     include /etc/nginx/fastcgi_php;
-    location / {
-        index index.php;
-        if (!-e \$request_filename) {
-            rewrite ^(.*)$  /index.php last;
-        }
+    location /index.php {
+          alias /var/www/$1/wordpress/wp-index-redis.php;
+      }
+
+      location / {
+          index wp-index-redis.php;
+          try_files $uri $uri/ /wp-index-redis.php?$args;
+      }
+
+      location /wp-admin/ {
+          index index.php;
+          try_files $uri $uri/ /index.php$args;
+      }
+
+      # Add trailing slash to /wp-admin requests
+      rewrite /wp-admin$ $scheme::/$host$uri/ permanent;
+
+      gzip off;
+
+      # Directives to send expires headers and turn off 404 error logging.
+      location ~* \.(js|css|png|jpg|jpeg|gif|ico)$ {
+          expires 24h;
+          log_not_found off;
+      }
+
+      # this prevents hidden files (beginning with a period) from being served
+            location ~ /\.          { access_log off; log_not_found off; deny all; }
+
+      location ~ \.php$ {
+          client_max_body_size 25M;
+          try_files      $uri =404;
+          fastcgi_pass   unix:/var/run/php5-fpm.sock;
+          fastcgi_index  index.php;
+          include        /etc/nginx/fastcgi_params;
+      }
     }
-}
 END
     invoke-rc.d nginx reload
+    curl -d "weblog_title=VSPi&user_name=admin&admin_password=raspberry&admin_password2=raspberry&admin_email=vspi@villagescience.org" http://127.0.0.1/wp-admin/install.php?step=2 >/dev/null 2>&1
 }
 
 function print_info {
@@ -377,4 +413,5 @@ update_upgrade
 install_dash
 install_syslogd
 install_dropbear
+install_redis
 install_wordpress vspi.local
