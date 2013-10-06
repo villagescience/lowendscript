@@ -311,7 +311,7 @@ function update_upgrade {
 
 function config_network {
 
-    sudo apt-get -q -y install bridge-utils hostapd avahi-daemon
+    sudo apt-get -q -y install bridge-utils hostapd avahi-daemon udhcpd
 
     wget http://www.daveconroy.com/wp3/wp-content/uploads/2013/07/hostapd.zip
     unzip hostapd.zip
@@ -323,27 +323,65 @@ function config_network {
 
     cat > "/etc/network/interfaces" <<END
 auto lo
+
 iface lo inet loopback
 iface eth0 inet dhcp
-auto br0
-iface br0 inet dhcp
-bridge_ports eth0 wlan0
+
+iface wlan0 inet static
+address 10.0.10.1
+netmask 255.255.255.0
+
+up iptables-restore < /etc/iptables.ipv4.nat
 END
 
     cat > "/etc/hostapd/hostapd.conf" <<END
+# Open network setup
+
 interface=wlan0
 driver=rtl871xdrv
-bridge=br0
-ssid=VSPi_Connect
-channel=1
-wmm_enabled=0
-wpa=1
-wpa_passphrase=forscience
-wpa_key_mgmt=WPA-PSK
-wpa_pairwise=TKIP
-rsn_pairwise=CCMP
+ssid=VS-Pi Connect
+
+#sets the mode of wifi, depends upon the devices you will be using. It can be a,b,g,n. Setting to g ensures backward compatiblity.
+hw_mode=g
+
+# Set the wi-fi channel:
+channel=6
+
+#Sets authentication algorithm
+#1 - only open system authentication
 auth_algs=1
-macaddr_acl=0
+
+wmm_enabled=0
+END
+
+    cat > "/etc/udhcpd.conf" <<END
+start		10.0.10.10
+end		10.0.10.200
+interface	wlan0
+remaining	yes
+opt	dns	8.8.8.8 8.8.4.4 # Google Public DNS servers
+option	subnet	255.255.255.0
+opt	router	10.0.10.1
+option	domain	local
+option	lease	864000
+END
+
+    cat > "/etc/iptables.ipv4.nat" <<END
+
+*filter
+:INPUT ACCEPT [149:13529]
+:FORWARD ACCEPT [0:0]
+:OUTPUT ACCEPT [22:2208]
+-A FORWARD -i eth0 -o wlan0 -m state --state RELATED,ESTABLISHED -j ACCEPT
+-A FORWARD -i wlan0 -o eth0 -j ACCEPT
+COMMIT
+*nat
+:PREROUTING ACCEPT [75:5274]
+:INPUT ACCEPT [75:5274]
+:OUTPUT ACCEPT [3:268]
+:POSTROUTING ACCEPT [0:0]
+-A POSTROUTING -o eth0 -j MASQUERADE
+COMMIT
 END
 
   echo -e "DAEMON_CONF='/etc/hostapd/hostapd.conf'" >> /etc/default/hostapd
@@ -360,13 +398,11 @@ sudo /etc/init.d/hostname.sh
 export PATH=/bin:/usr/bin:/sbin:/usr/sbin
 
 check_sanity
-install_exim4
+update_upgrade
 install_mysql
 install_nginx
 install_php
 remove_unneeded
-update_upgrade
-install_dash
 install_syslogd
 install_redis
 install_fonts
