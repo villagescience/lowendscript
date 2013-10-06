@@ -80,6 +80,10 @@ function install_redis {
     check_install redis-server redis
 }
 
+function install_fonts {
+    check_install fonts-lao fonts
+}
+
 function install_dropbear {
     check_install dropbear dropbear
     check_install /usr/sbin/xinetd xinetd
@@ -131,9 +135,9 @@ function install_mysql {
     echo -e "[mysqld] \
       key_buffer = 8M \
       query_cache_size = 0 \
-      skip-innodb" >> /etc/mysql/conf.d/lowendbox.cnf
+      skip-innodb" > /etc/mysql/conf.d/lowendbox.cnf
 
-    echo -e "[client] \n user = root \n password = raspberry" >> ~/.my.cnf
+    echo -e "[client] \n user = root \n password = raspberry" > ~/.my.cnf
     chmod 600 ~/.my.cnf
 }
 
@@ -398,6 +402,46 @@ function update_upgrade {
     apt-get -q -y upgrade
 }
 
+function config_network {
+
+    check_install bridge-utils
+    check_install hostapd
+
+    wget http://www.daveconroy.com/wp3/wp-content/uploads/2013/07/hostapd.zip
+    unzip hostapd.zip
+    sudo mv /usr/sbin/hostapd /usr/sbin/hostapd.bak
+    sudo mv hostapd /usr/sbin/hostapd.edimax
+    sudo ln -sf /usr/sbin/hostapd.edimax /usr/sbin/hostapd
+    sudo chown root.root /usr/sbin/hostapd
+    sudo chmod 755 /usr/sbin/hostapd
+
+    cat > /etc/network/interfaces <<END
+  auto lo
+  iface lo inet loopback
+  iface eth0 inet dhcp
+  auto br0
+  iface br0 inet dhcp
+  bridge_ports eth0 wlan0
+END
+
+    cat > /etc/hostapd/hostapd.conf <<END
+  interface=wlan0
+  driver=rtl871xdrv
+  bridge=br0
+  ssid=VSPi_Connect
+  channel=1
+  wmm_enabled=0
+  wpa=1
+  wpa_passphrase=forscience
+  wpa_key_mgmt=WPA-PSK
+  wpa_pairwise=TKIP
+  rsn_pairwise=CCMP
+  auth_algs=1
+  macaddr_acl=0
+END
+
+}
+
 ########################################################################
 # START OF PROGRAM
 ########################################################################
@@ -414,4 +458,6 @@ install_dash
 install_syslogd
 install_dropbear
 install_redis
+install_fonts
 install_wordpress vspi.local
+config_network
