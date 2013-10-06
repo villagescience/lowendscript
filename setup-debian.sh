@@ -285,17 +285,9 @@ END
 
 function install_wordpress {
     check_install wget wget
-    if [ -z "$1" ]
-    then
-        die "Usage: `basename $0` wordpress <hostname>"
-    fi
+    sudo apt-get install -q -y git-core
 
-    # Downloading the WordPress' latest and greatest distribution.
-    mkdir /tmp/wordpress.$$
-    wget -O - http://wordpress.org/latest.tar.gz | \
-        tar zxf - -C /tmp/wordpress.$$
-    mv /tmp/wordpress.$$/wordpress "/var/www/$1"
-    rm -rf /tmp/wordpress.$$
+    git clone "https://bitbucket.org/villagescience/wordpress.git /var/www/$1"
     chown root:root -R "/var/www/$1"
 
     # Setting up the MySQL database
@@ -304,12 +296,16 @@ function install_wordpress {
     # MySQL userid cannot be more than 15 characters long
     userid="${userid:0:15}"
     passwd=`get_password "$userid@mysql"`
-    cp "/var/www/$1/wordpress/wp-config-sample.php" "/var/www/$1/wordpress/wp-config.php"
+    cp "/var/www/$1/wp-config-sample.php" "/var/www/$1/wp-config.php"
     sed -i "s/database_name_here/$dbname/; s/username_here/$userid/; s/password_here/$passwd/" \
-        "/var/www/$1/wordpress/wp-config.php"
+        "/var/www/$1/wp-config.php"
     mysqladmin create "$dbname"
     echo "GRANT ALL PRIVILEGES ON \`$dbname\`.* TO \`$userid\`@localhost IDENTIFIED BY '$passwd';" | \
         mysql
+
+    chmod 755 -R "/var/www/$1/wp-content"
+    chmod 666 "/var/www/$1/.htaccess"
+    chmod 666 "/var/www/$1/wp-config.php"
 
     # Setting up Nginx mapping
     cat > "/etc/nginx/sites-enabled/$1.conf" <<END
@@ -404,40 +400,39 @@ function update_upgrade {
 
 function config_network {
 
-    check_install bridge-utils
-    check_install hostapd
+    sudo apt-get -q -y install bridge-utils hostapd
 
     wget http://www.daveconroy.com/wp3/wp-content/uploads/2013/07/hostapd.zip
     unzip hostapd.zip
-    sudo mv /usr/sbin/hostapd /usr/sbin/hostapd.bak
+    sudo rm  /usr/sbin/hostapd
     sudo mv hostapd /usr/sbin/hostapd.edimax
     sudo ln -sf /usr/sbin/hostapd.edimax /usr/sbin/hostapd
     sudo chown root.root /usr/sbin/hostapd
     sudo chmod 755 /usr/sbin/hostapd
 
-    cat > /etc/network/interfaces <<END
-  auto lo
-  iface lo inet loopback
-  iface eth0 inet dhcp
-  auto br0
-  iface br0 inet dhcp
-  bridge_ports eth0 wlan0
+    cat > "/etc/network/interfaces" <<END
+auto lo
+iface lo inet loopback
+iface eth0 inet dhcp
+auto br0
+iface br0 inet dhcp
+bridge_ports eth0 wlan0
 END
 
-    cat > /etc/hostapd/hostapd.conf <<END
-  interface=wlan0
-  driver=rtl871xdrv
-  bridge=br0
-  ssid=VSPi_Connect
-  channel=1
-  wmm_enabled=0
-  wpa=1
-  wpa_passphrase=forscience
-  wpa_key_mgmt=WPA-PSK
-  wpa_pairwise=TKIP
-  rsn_pairwise=CCMP
-  auth_algs=1
-  macaddr_acl=0
+    cat > "/etc/hostapd/hostapd.conf" <<END
+interface=wlan0
+driver=rtl871xdrv
+bridge=br0
+ssid=VSPi_Connect
+channel=1
+wmm_enabled=0
+wpa=1
+wpa_passphrase=forscience
+wpa_key_mgmt=WPA-PSK
+wpa_pairwise=TKIP
+rsn_pairwise=CCMP
+auth_algs=1
+macaddr_acl=0
 END
 
 }
