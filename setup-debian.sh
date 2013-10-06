@@ -311,7 +311,7 @@ function update_upgrade {
 
 function config_network {
 
-    sudo apt-get -q -y install bridge-utils hostapd
+    sudo apt-get -q -y install bridge-utils hostapd avahi-daemon
 
     wget http://www.daveconroy.com/wp3/wp-content/uploads/2013/07/hostapd.zip
     unzip hostapd.zip
@@ -347,6 +347,10 @@ macaddr_acl=0
 END
 
   echo -e "DAEMON_CONF='/etc/hostapd/hostapd.conf'" >> /etc/default/hostapd
+
+echo -e "vspi" > /etc/hostname
+echo -e "127.0.0.1    vspi" > /etc/hosts
+sudo /etc/init.d/hostname.sh
 
 }
 
