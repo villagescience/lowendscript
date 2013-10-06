@@ -170,7 +170,7 @@ NAME="php-cgi"
 DESC="php-cgi"
 PIDFILE="/var/run/www/php.pid"
 FCGIPROGRAM="/usr/bin/php-cgi"
-FCGISOCKET="/var/run/www/php.sock"
+FCGISOCKET="/var/run/www/php5-fpm.sock"
 FCGIUSER="www-data"
 FCGIGROUP="www-data"
 
@@ -233,7 +233,7 @@ location ~ \.php$ {
     fastcgi_index index.php;
     fastcgi_param SCRIPT_FILENAME \$document_root\$fastcgi_script_name;
     if (-f \$request_filename) {
-        fastcgi_pass unix:/var/run/www/php.sock;
+        fastcgi_pass unix:/var/run/www/php5-fpm.sock;
     }
 }
 END
@@ -287,7 +287,7 @@ function install_wordpress {
     check_install wget wget
     sudo apt-get install -q -y git-core
 
-    git clone "https://bitbucket.org/villagescience/wordpress.git /var/www/$1"
+    sudo git clone "https://bitbucket.org/villagescience/wordpress.git /var/www/$1"
     chown root:root -R "/var/www/$1"
 
     # Setting up the MySQL database
@@ -312,24 +312,24 @@ function install_wordpress {
 server {
     listen 80 default_server;
     server_name _;
-    root /var/www/$1/wordpress;
+    root /var/www/$1;
     include /etc/nginx/fastcgi_php;
     location /index.php {
-          alias /var/www/$1/wordpress/wp-index-redis.php;
+          alias /var/www/$1/wp-index-redis.php;
       }
 
       location / {
           index wp-index-redis.php;
-          try_files $uri $uri/ /wp-index-redis.php?$args;
+          try_files \$uri \$uri/ /wp-index-redis.php?\$args;
       }
 
       location /wp-admin/ {
           index index.php;
-          try_files $uri $uri/ /index.php$args;
+          try_files \$uri \$uri/ /index.php\$args;
       }
 
       # Add trailing slash to /wp-admin requests
-      rewrite /wp-admin$ $scheme::/$host$uri/ permanent;
+      rewrite /wp-admin\$ \$scheme::/\$host\$uri/ permanent;
 
       gzip off;
 
@@ -344,7 +344,6 @@ server {
 
       location ~ \.php$ {
           client_max_body_size 25M;
-          try_files      $uri =404;
           fastcgi_pass   unix:/var/run/php5-fpm.sock;
           fastcgi_index  index.php;
           include        /etc/nginx/fastcgi_params;
