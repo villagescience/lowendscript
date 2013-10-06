@@ -77,11 +77,11 @@ function install_dash {
 
 
 function install_redis {
-    check_install redis-server redis
+    sudo apt-get -q -y install redis-server
 }
 
 function install_fonts {
-    check_install fonts-lao fonts
+    sudo apt-get -q -y install fonts-lao
 }
 
 function install_dropbear {
@@ -153,7 +153,7 @@ END
 }
 
 function install_php {
-    check_install php5 php5-fpm php-pear php5-mysql
+    sudo apt-get -y -q install php5 php5-fpm php-pear php5-mysql
 }
 
 function install_syslogd {
@@ -200,7 +200,6 @@ END
 
 function install_wordpress {
     check_install wget wget
-    sudo apt-get install -q -y git-core
 
 #     sudo git clone "https://bitbucket.org/villagescience/wordpress.git /var/www/$1"
     chown root:root -R "/var/www/$1"
@@ -217,15 +216,13 @@ function install_wordpress {
     echo "GRANT ALL PRIVILEGES ON \`$dbname\`.* TO \`$userid\`@localhost IDENTIFIED BY '$passwd';" | \
         mysql
 
-    chmod 755 -R "/var/www/$1/wp-content"
-    chmod 666 "/var/www/$1/.htaccess"
-    chmod 666 "/var/www/$1/wp-config.php"
+    rm -r /etc/nginx/sites-available/default
 
     # Setting up Nginx mapping
     cat > "/etc/nginx/sites-enabled/$1.conf" <<END
 server {
-    listen       80;
-    server_name  10.0.1.6;
+    listen       80 default_server;
+    server_name  "";
     root         /var/www/$1;
 
     location /index.php {
@@ -349,6 +346,8 @@ auth_algs=1
 macaddr_acl=0
 END
 
+  echo -e "DAEMON_CONF='/etc/hostapd/hostapd.conf'" >> /etc/default/hostapd
+
 }
 
 ########################################################################
@@ -365,8 +364,8 @@ remove_unneeded
 update_upgrade
 install_dash
 install_syslogd
-install_dropbear
 install_redis
 install_fonts
 install_wordpress vspi.local
 config_network
+sudo reboot
