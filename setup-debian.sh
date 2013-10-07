@@ -202,7 +202,10 @@ function install_wordpress {
     check_install wget wget
 
 #     sudo git clone "https://bitbucket.org/villagescience/wordpress.git /var/www/$1"
-    chown root:root -R "/var/www/$1"
+    sudo chown root:root -R "/var/www/$1"
+    sudo chmod 755 -R "/var/www/$1/wp-content"
+    sudo chmod 666 "/var/www/$1/.htaccess"
+    sudo chmod 666 "/var/www/$1/wp-config.php"
 
     # Setting up the MySQL database
     dbname=`echo $1 | tr . _`
@@ -385,13 +388,13 @@ COMMIT
 END
 
   echo -e "DHCPD_OPTS='-S'" >> /etc/default/udhcpd
-  echo -e "DAEMON_CONF='/etc/hostapd/hostapd.conf'" >> /etc/default/hostapd
   sudo update-rc.d udhcpd enable
+  echo -e "DAEMON_CONF='/etc/hostapd/hostapd.conf'" >> /etc/default/hostapd
   sudo update-rc.d hostapd enable
 
-  echo -e "vspi" > /etc/hostname
-  echo -e "127.0.0.1    vspi" > /etc/hosts
-  sudo /etc/init.d/hostname.sh
+echo -e "vspi" > /etc/hostname
+echo -e "127.0.0.1    vspi" > /etc/hosts
+sudo /etc/init.d/hostname.sh
 
 }
 
