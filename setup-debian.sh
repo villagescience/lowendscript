@@ -222,7 +222,7 @@ function install_wordpress {
     cat > "/etc/nginx/sites-enabled/$1.conf" <<END
 server {
     listen       80 default_server;
-    server_name  "";
+    server_name  vspi.local;
     root         /var/www/$1;
 
     location /index.php {
@@ -384,11 +384,14 @@ COMMIT
 COMMIT
 END
 
+  echo -e "DHCPD_OPTS='-S'" >> /etc/default/udhcpd
   echo -e "DAEMON_CONF='/etc/hostapd/hostapd.conf'" >> /etc/default/hostapd
+  sudo update-rc.d udhcpd enable
+  sudo update-rc.d hostapd enable
 
-echo -e "vspi" > /etc/hostname
-echo -e "127.0.0.1    vspi" > /etc/hosts
-sudo /etc/init.d/hostname.sh
+  echo -e "vspi" > /etc/hostname
+  echo -e "127.0.0.1    vspi" > /etc/hosts
+  sudo /etc/init.d/hostname.sh
 
 }
 
