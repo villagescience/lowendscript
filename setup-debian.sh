@@ -203,7 +203,7 @@ function install_wordpress {
 
 #     sudo git clone "https://bitbucket.org/villagescience/wordpress.git /var/www/$1"
     sudo chown root:root -R "/var/www/$1"
-    sudo chmod 755 -R "/var/www/$1/wp-content"
+    sudo chmod 777 -R "/var/www/$1/wp-content"
     sudo chmod 666 "/var/www/$1/.htaccess"
     sudo chmod 666 "/var/www/$1/wp-config.php"
 
@@ -386,8 +386,8 @@ COMMIT
 -A POSTROUTING -o eth0 -j MASQUERADE
 COMMIT
 END
-
-  echo -e "DHCPD_OPTS='-S'" >> /etc/default/udhcpd
+  sudo rm /etc/default/udhcpd
+  echo -e "DHCPD_OPTS='-S'" > /etc/default/udhcpd
   sudo update-rc.d udhcpd enable
   echo -e "DAEMON_CONF='/etc/hostapd/hostapd.conf'" >> /etc/default/hostapd
   sudo update-rc.d hostapd enable
