@@ -1,5 +1,24 @@
 #!/bin/bash
 
+########################################################################
+##
+##   VS-Pi Install Script
+##   ====================
+##   This shell script installs and configures the software
+##   and dependencies to run the VS-Pi Wordpress on Raspbian.
+##
+##   Visit http://github.com/villagescience for more information.
+##
+##   Originally from https://github.com/lowendbox/lowendscript
+##   Modified by Nick Wynja on 2013-10-07 under GPLv3
+##
+########################################################################
+
+
+##
+## HELPER FUNCTIONS
+##
+
 function check_install {
     if [ -z "`which "$1" 2>/dev/null`" ]
     then
@@ -69,57 +88,53 @@ function get_password() {
     echo ${password:0:13}
 }
 
-function install_dash {
-    check_install dash dash
-    rm -f /bin/sh
-    ln -s dash /bin/sh
+function print_info {
+    echo -n -e '\e[1;36m'
+    echo -n $1
+    echo -e '\e[0m'
 }
 
-
-function install_redis {
-    sudo apt-get -q -y install redis-server
+function print_warn {
+    echo -n -e '\e[1;33m'
+    echo -n $1
+    echo -e '\e[0m'
 }
 
-function install_fonts {
-    sudo apt-get -q -y install fonts-lao
+function update_upgrade {
+    # Run through the apt-get update/upgrade first. This should be done before
+    # we try to install any package
+    apt-get -q -y update
+    apt-get -q -y upgrade
 }
 
-function install_dropbear {
-    check_install dropbear dropbear
-    check_install /usr/sbin/xinetd xinetd
+function remove_unneeded {
+    # Some Debian have portmap installed. We don't need that.
+    check_remove /sbin/portmap portmap
 
-    # Disable SSH
-    touch /etc/ssh/sshd_not_to_be_run
-    invoke-rc.d ssh stop
+    # Remove rsyslogd, which allocates ~30MB privvmpages on an OpenVZ system,
+    # which might make some low-end VPS inoperatable. We will do this even
+    # before running apt-get update.
+    check_remove /usr/sbin/rsyslogd rsyslog
 
-    # Enable dropbear to start. We are going to use xinetd as it is just
-    # easier to configure and might be used for other things.
-    cat > /etc/xinetd.d/dropbear <<END
-service ssh
-{
-    socket_type     = stream
-    only_from       = 0.0.0.0
-    wait            = no
-    user            = root
-    protocol        = tcp
-    server          = /usr/sbin/dropbear
-    server_args     = -i
-    disable         = no
-}
-END
-    invoke-rc.d xinetd restart
-}
+    # Other packages that seem to be pretty common in standard OpenVZ
+    # templates.
+    check_remove /usr/sbin/apache2 'apache2*'
+    check_remove /usr/sbin/named bind9
+    check_remove /usr/sbin/smbd 'samba*'
+    check_remove /usr/sbin/nscd nscd
 
-function install_exim4 {
-    check_install mail exim4
-    if [ -f /etc/exim4/update-exim4.conf.conf ]
+    # Need to stop sendmail as removing the package does not seem to stop it.
+    if [ -f /usr/lib/sm.bin/smtpd ]
     then
-        sed -i \
-            "s/dc_eximconfig_configtype='local'/dc_eximconfig_configtype='internet'/" \
-            /etc/exim4/update-exim4.conf.conf
-        invoke-rc.d exim4 restart
+        invoke-rc.d sendmail stop
+        check_remove /usr/lib/sm.bin/smtpd 'sendmail*'
     fi
 }
+
+
+##
+## INSTALL AND CONFIGURE
+##
 
 function install_mysql {
     # Install the MySQL packages
@@ -198,6 +213,15 @@ END
     invoke-rc.d inetutils-syslogd start
 }
 
+function install_redis {
+    #redis is used to cache Wordpress pages to speed up response time
+    sudo apt-get -q -y install redis-server
+}
+
+function install_fonts {
+    sudo apt-get -q -y install fonts-lao
+}
+
 function install_wordpress {
     check_install wget wget
 
@@ -267,49 +291,6 @@ server {
 END
     invoke-rc.d nginx reload
     curl -d "weblog_title=VSPi&user_name=admin&admin_password=raspberry&admin_password2=raspberry&admin_email=vspi@villagescience.org" http://127.0.0.1/wp-admin/install.php?step=2 >/dev/null 2>&1
-}
-
-function print_info {
-    echo -n -e '\e[1;36m'
-    echo -n $1
-    echo -e '\e[0m'
-}
-
-function print_warn {
-    echo -n -e '\e[1;33m'
-    echo -n $1
-    echo -e '\e[0m'
-}
-
-function remove_unneeded {
-    # Some Debian have portmap installed. We don't need that.
-    check_remove /sbin/portmap portmap
-
-    # Remove rsyslogd, which allocates ~30MB privvmpages on an OpenVZ system,
-    # which might make some low-end VPS inoperatable. We will do this even
-    # before running apt-get update.
-    check_remove /usr/sbin/rsyslogd rsyslog
-
-    # Other packages that seem to be pretty common in standard OpenVZ
-    # templates.
-    check_remove /usr/sbin/apache2 'apache2*'
-    check_remove /usr/sbin/named bind9
-    check_remove /usr/sbin/smbd 'samba*'
-    check_remove /usr/sbin/nscd nscd
-
-    # Need to stop sendmail as removing the package does not seem to stop it.
-    if [ -f /usr/lib/sm.bin/smtpd ]
-    then
-        invoke-rc.d sendmail stop
-        check_remove /usr/lib/sm.bin/smtpd 'sendmail*'
-    fi
-}
-
-function update_upgrade {
-    # Run through the apt-get update/upgrade first. This should be done before
-    # we try to install any package
-    apt-get -q -y update
-    apt-get -q -y upgrade
 }
 
 function config_network {
